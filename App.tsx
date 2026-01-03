@@ -13,6 +13,10 @@ const App: React.FC = () => {
   const [hasKey, setHasKey] = useState<boolean>(false);
   const [checkingKey, setCheckingKey] = useState<boolean>(true);
   
+  // Progress Bar State
+  const [progress, setProgress] = useState(0);
+  const [elapsedSeconds, setElapsedSeconds] = useState(0);
+
   // Logo state
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
   const [logoError, setLogoError] = useState(false);
@@ -26,6 +30,40 @@ const App: React.FC = () => {
        setLogoUrl(getLogoPublicUrl());
     }
   }, []);
+
+  // Progress Bar Simulation Effect
+  useEffect(() => {
+    let interval: ReturnType<typeof setInterval>;
+    if (loading) {
+      setProgress(0);
+      setElapsedSeconds(0);
+      
+      interval = setInterval(() => {
+        setElapsedSeconds(prev => prev + 0.1);
+        
+        setProgress(prev => {
+          // Cap at 95% until generation actually finishes
+          if (prev >= 95) return 95;
+          
+          // Simulation logic:
+          // Fast initially, then slows down for image generation, then crawls
+          let increment = 0;
+          if (prev < 30) increment = 0.5;      // Fast start
+          else if (prev < 70) increment = 0.15; // Generating visuals (slow)
+          else if (prev < 90) increment = 0.05; // Layout
+          else increment = 0.01;                // Crawl at end
+          
+          return Math.min(prev + increment, 95);
+        });
+      }, 100); // Update every 100ms
+    } else {
+      // If loading finishes, jump to 100 instantly
+      if (progress > 0 && progress < 100) {
+        setProgress(100);
+      }
+    }
+    return () => clearInterval(interval);
+  }, [loading]);
 
   const checkKey = async () => {
     try {
@@ -118,6 +156,14 @@ const App: React.FC = () => {
       e.preventDefault();
       handleGenerate();
     }
+  };
+
+  // Helper for dynamic loading text
+  const getLoadingText = () => {
+    if (elapsedSeconds < 10) return "Decoding astrological alignments...";
+    if (elapsedSeconds < 25) return "Generating sacred imagery and visuals...";
+    if (elapsedSeconds < 45) return "Structuring report layout...";
+    return "Finalizing PDF document...";
   };
 
   if (checkingKey) {
@@ -255,10 +301,32 @@ const App: React.FC = () => {
             />
             
             {loading && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/80 backdrop-blur-sm rounded-lg z-10">
-                 <div className="w-16 h-16 border-4 border-orange-100 border-t-[#fb8c00] rounded-full animate-spin mb-4"></div>
-                 <p className="text-[#004d40] font-medium text-sm mt-2">Crafting Astrology Report...</p>
-                 <p className="text-slate-400 text-xs">Generating visuals & formatting layout</p>
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-white/90 backdrop-blur-sm rounded-lg z-10 px-12">
+                 
+                 {/* Progress Bar Container */}
+                 <div className="w-full max-w-md h-2 bg-slate-200 rounded-full overflow-hidden mb-4 shadow-inner">
+                    <div 
+                      className="h-full bg-[#fb8c00] transition-all duration-300 ease-out rounded-full" 
+                      style={{ width: `${progress}%` }}
+                    />
+                 </div>
+                 
+                 {/* Main Status Text */}
+                 <p className="text-[#004d40] font-bold text-base animate-pulse text-center">
+                   {getLoadingText()}
+                 </p>
+                 
+                 {/* Percentage */}
+                 <p className="text-slate-400 text-xs mt-2 font-mono">
+                   {Math.round(progress)}% Complete
+                 </p>
+
+                 {/* Long Wait Prompt */}
+                 {elapsedSeconds > 45 && (
+                    <p className="text-orange-600 text-xs mt-4 font-medium animate-bounce bg-orange-50 px-3 py-1 rounded-full border border-orange-100">
+                      Please wait a moment longer...
+                    </p>
+                 )}
               </div>
             )}
           </div>
