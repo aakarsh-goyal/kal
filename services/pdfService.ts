@@ -323,6 +323,48 @@ export const createPDF = async (report: AstrologyReport) => {
     doc.text(lines, margin + 5, yPos + 9);
     yPos += height;
   };
+  
+  // New Helper: Draw text and image side-by-side (Magazine Style)
+  const drawSideBySide = (title: string, content: string | string[], base64Img: string, imgPosition: 'left' | 'right') => {
+    const imgWidth = 50; 
+    const imgHeight = imgWidth * (9/16);
+    const gap = 8;
+    const textWidth = contentWidth - imgWidth - gap;
+    
+    const contentStr = Array.isArray(content) ? content.map(c => `• ${c}`).join("\n") : content;
+    
+    doc.setFont("times", "normal");
+    doc.setFontSize(10);
+    const lines = doc.splitTextToSize(contentStr, textWidth);
+    const textHeight = (lines.length * 5) + 12;
+    
+    // Total height is whichever is taller
+    const totalHeight = Math.max(textHeight, imgHeight + 5);
+    checkPageBreak(totalHeight + 10);
+    
+    const startY = yPos;
+    
+    // Determine positions
+    const imgX = imgPosition === 'left' ? margin : margin + textWidth + gap;
+    const textX = imgPosition === 'left' ? margin + imgWidth + gap : margin;
+    
+    // Draw Title (Always above the text block)
+    doc.setFont("times", "bold");
+    doc.setTextColor(cTeal[0], cTeal[1], cTeal[2]);
+    doc.text(title, textX, startY + 3);
+    
+    // Draw Text
+    doc.setFont("times", "normal");
+    doc.setTextColor(cDark[0], cDark[1], cDark[2]);
+    doc.text(lines, textX, startY + 9);
+    
+    // Draw Image
+    try {
+        doc.addImage(base64Img, "PNG", imgX, startY, imgWidth, imgHeight, undefined, 'FAST');
+    } catch(e) { console.warn("Failed to draw side-by-side image"); }
+    
+    yPos += totalHeight + 8;
+  };
 
   // --- MAIN RENDER ---
   try {
@@ -389,7 +431,9 @@ export const createPDF = async (report: AstrologyReport) => {
     drawLabelValue("Moon Sign", report.moonSign);
     if (report.keyObservations && report.keyObservations.length > 0) {
       yPos += 2;
-      drawLabelValue("Key Observations", report.keyObservations.join("\n"));
+      // Format Observations with bullets for better readability
+      const formattedObs = report.keyObservations.map(o => `• ${o}`).join("\n");
+      drawLabelValue("Key Observations", formattedObs);
     }
     
     // VISUAL: Planetary Alignment (Sprinkled small)
@@ -435,17 +479,36 @@ export const createPDF = async (report: AstrologyReport) => {
       yPos += 5;
       drawSectionTitle("Remedial Measures");
       
+      // GEMSTONES (Side by Side: Image Right)
       if (report.structuredRemedies.gemstones) {
-          drawCard("Gemstones", report.structuredRemedies.gemstones, 'diamond');
-          // VISUAL: Gemstone (Sprinkled small immediately after)
           if (report.generatedVisuals?.gemstoneVisual) {
-              drawGeneratedVisual(report.generatedVisuals.gemstoneVisual, 30, false);
+              drawSideBySide("Gemstones", report.structuredRemedies.gemstones, report.generatedVisuals.gemstoneVisual, 'right');
+          } else {
+              drawCard("Gemstones", report.structuredRemedies.gemstones, 'diamond');
           }
       }
       
-      if (report.structuredRemedies.rudraksha) drawCard("Rudraksha", report.structuredRemedies.rudraksha, 'circle');
-      if (report.structuredRemedies.rituals?.length > 0) drawCard("Rituals", report.structuredRemedies.rituals, 'triangle');
-      if (report.structuredRemedies.lifestyle?.length > 0) drawCard("Lifestyle Adjustments", report.structuredRemedies.lifestyle, 'square');
+      // RUDRAKSHA (Side by Side: Image Left)
+      if (report.structuredRemedies.rudraksha) {
+          if (report.generatedVisuals?.rudrakshaVisual) {
+               drawSideBySide("Rudraksha", report.structuredRemedies.rudraksha, report.generatedVisuals.rudrakshaVisual, 'left');
+          } else {
+               drawCard("Rudraksha", report.structuredRemedies.rudraksha, 'circle');
+          }
+      }
+
+      // RITUALS (Side by Side: Image Right - if visual exists)
+      if (report.structuredRemedies.rituals?.length > 0) {
+          if (report.generatedVisuals?.mantraVisual) {
+               drawSideBySide("Rituals", report.structuredRemedies.rituals, report.generatedVisuals.mantraVisual, 'right');
+          } else {
+               drawCard("Rituals", report.structuredRemedies.rituals, 'triangle');
+          }
+      }
+
+      if (report.structuredRemedies.lifestyle?.length > 0) {
+          drawCard("Lifestyle Adjustments", report.structuredRemedies.lifestyle, 'square');
+      }
     }
 
     // 7. BOTANICAL & SPIRITUAL

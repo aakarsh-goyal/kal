@@ -13,6 +13,8 @@ export interface GeneratedVisuals {
   botanicalSketch?: string;  // Base64 string of the botanical illustration
   careerVisual?: string;     // Base64 string of the career symbolism
   gemstoneVisual?: string;   // Base64 string for the gemstone
+  rudrakshaVisual?: string;  // Base64 string for the rudraksha
+  mantraVisual?: string;     // Base64 string for mantra/yantra/deity
   personalityVisual?: string;// Base64 string for personality aura/symbol
   planetaryVisual?: string;  // Base64 string for general planetary alignment
 }

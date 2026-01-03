@@ -113,22 +113,23 @@ export const generateAstrologyReport = async (rawText: string): Promise<Astrolog
 
   const systemPrompt = `
     Role: Professional Astrological Consultant for 'Kalpvriksha'.
-    Task: Convert raw notes into a strictly compartmentalized, academic-style consultation report.
-    
-    OUTPUT FORMAT REQURIEMENTS:
-    1. Structure must match the 'Astrological Consultation Report' standard.
-    2. Tone: Formal, precise, academic, authoritative.
-    3. No fluff. Use direct statements.
-    
+    Task: Convert raw notes into a clear, structured, and easy-to-understand consultation report.
+
+    OUTPUT GUIDELINES:
+    1. Language: Use simple, clear, and accessible English. Avoid overly complex academic jargon. If a technical term is used, briefly explain it in simple terms.
+    2. Format: Use bullet points and short paragraphs to make the content scannable and digestible. Avoid long walls of text.
+    3. Tone: Professional, empathetic, and authoritative but easy to read (approx 8th-grade reading level).
+    4. Detail: Be detailed in the predictions and remedies but concise and direct in expression.
+
     SECTIONS TO POPULATE:
     - CLIENT DETAILS: Extract Name, Lagna, Rashi, and Key Observations (Doshas, Strengths).
-    - TIMELINE ANALYSIS: Identify running Mahadasha dates, Sade Sati status, and a specific Career Forecast.
-    - PERSONALITY & HEALTH: Break down into Temperament, Caution (Bad habits/risks), Physical (Ailments), Advice (Behavioral).
+    - TIMELINE ANALYSIS: Identify running Mahadasha dates, Sade Sati status, and a specific Career Forecast. Explain the 'Why' briefly.
+    - PERSONALITY & HEALTH: Break down into Temperament, Caution (Bad habits/risks), Physical (Ailments), Advice (Behavioral). Use bullet points for advice.
     - REMEDIAL MEASURES: 
        - Gemstones (Be specific on metal/finger).
        - Rudraksha.
-       - Rituals (Mantras/Offerings).
-       - Lifestyle (Habits/Donations).
+       - Rituals (Mantras/Offerings). List them clearly.
+       - Lifestyle (Habits/Donations). Practical actionable points.
     - BOTANICAL REMEDIES: Trees to plant based on Nakshatra/Planets.
     - SPIRITUAL PILGRIMAGE: Specific temples.
   `;
@@ -196,17 +197,37 @@ export const generateAstrologyReport = async (rawText: string): Promise<Astrolog
     );
   }
 
-  // D. Gemstone Visual (New)
+  // D. Gemstone Visual (Remedy 1)
   if (report.structuredRemedies?.gemstones) {
     const prompt = `A minimalist vector icon of the recommended gemstone: ${report.structuredRemedies.gemstones}. 
-    ${styleGuide} Focus on the shape of the stone or ring. Simple and elegant.`;
+    ${styleGuide} Focus on the shape of the stone ring. Simple and elegant.`;
     
     visualPromises.push(
         generateImage(ai, prompt).then(img => { if (img) visuals.gemstoneVisual = img; })
     );
   }
 
-  // E. Personality/Aura Visual (New)
+  // E. Rudraksha Visual (Remedy 2)
+  if (report.structuredRemedies?.rudraksha) {
+    const prompt = `A minimalist vector icon of a Rudraksha bead: ${report.structuredRemedies.rudraksha}. 
+    ${styleGuide} Detailed texture but flat design.`;
+    
+    visualPromises.push(
+        generateImage(ai, prompt).then(img => { if (img) visuals.rudrakshaVisual = img; })
+    );
+  }
+
+  // F. Mantra/Deity Visual (Remedy 3)
+  if (report.structuredRemedies?.rituals && report.structuredRemedies.rituals.length > 0) {
+    const prompt = `A minimalist spiritual yantra or 'Om' symbol or deity outline representing these rituals: ${report.structuredRemedies.rituals[0]}. 
+    ${styleGuide} Sacred geometry.`;
+    
+    visualPromises.push(
+        generateImage(ai, prompt).then(img => { if (img) visuals.mantraVisual = img; })
+    );
+  }
+
+  // G. Personality/Aura Visual
   if (report.personalityHealth?.temperament) {
     const prompt = `Abstract minimalist circle representation of this temperament: ${report.personalityHealth.temperament}. 
     ${styleGuide} Use circular patterns or aura lines.`;
@@ -216,7 +237,7 @@ export const generateAstrologyReport = async (rawText: string): Promise<Astrolog
     );
   }
 
-  // F. Planetary Alignment (New - based on observations)
+  // H. Planetary Alignment
   if (report.keyObservations && report.keyObservations.length > 0) {
       const prompt = `Minimalist astrological chart symbols representing: ${report.keyObservations[0]}. 
       ${styleGuide} Use planet symbols (Saturn, Mars, etc.) in a geometric arrangement.`;
