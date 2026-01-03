@@ -8,6 +8,15 @@ export interface KeyHighlight {
   value: string;
 }
 
+export interface GeneratedVisuals {
+  pilgrimageMap?: string;    // Base64 string of the generated map
+  botanicalSketch?: string;  // Base64 string of the botanical illustration
+  careerVisual?: string;     // Base64 string of the career symbolism
+  gemstoneVisual?: string;   // Base64 string for the gemstone
+  personalityVisual?: string;// Base64 string for personality aura/symbol
+  planetaryVisual?: string;  // Base64 string for general planetary alignment
+}
+
 export interface AstrologyReport {
   clientName: string;
   // New Academic Structure Fields
@@ -42,7 +51,9 @@ export interface AstrologyReport {
   summaryHighlights: KeyHighlight[];
   visualThemeDescription: string;
   visualSymbolismExplanation: string;
-  // Removed generated image fields
+  
+  // Holds the AI generated images
+  generatedVisuals?: GeneratedVisuals;
 }
 
 export interface GenerationState {

@@ -1,5 +1,5 @@
 import { GoogleGenAI, Type, Schema } from "@google/genai";
-import { AstrologyReport } from "../types";
+import { AstrologyReport, GeneratedVisuals } from "../types";
 
 // Define the response schema matching the Academic Report Structure
 const reportSchema: Schema = {
@@ -76,6 +76,34 @@ const reportSchema: Schema = {
   ]
 };
 
+// Helper to generate a single image
+const generateImage = async (ai: GoogleGenAI, prompt: string): Promise<string | null> => {
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3-pro-image-preview', // High quality model
+      contents: {
+        parts: [{ text: prompt }]
+      },
+      config: {
+        imageConfig: {
+          aspectRatio: "16:9",
+          imageSize: "1K"
+        }
+      }
+    });
+
+    for (const part of response.candidates?.[0]?.content?.parts || []) {
+      if (part.inlineData) {
+        return `data:image/png;base64,${part.inlineData.data}`;
+      }
+    }
+    return null;
+  } catch (error) {
+    console.warn(`Failed to generate image for prompt: ${prompt}`, error);
+    return null;
+  }
+};
+
 export const generateAstrologyReport = async (rawText: string): Promise<AstrologyReport> => {
   if (!process.env.API_KEY) {
     throw new Error("API Key is missing");
@@ -107,6 +135,7 @@ export const generateAstrologyReport = async (rawText: string): Promise<Astrolog
 
   let report: AstrologyReport;
 
+  // 1. Text Generation Phase
   try {
     const textResponse = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
@@ -115,7 +144,7 @@ export const generateAstrologyReport = async (rawText: string): Promise<Astrolog
         systemInstruction: systemPrompt,
         responseMimeType: "application/json",
         responseSchema: reportSchema,
-        temperature: 0.3, // Low temperature for academic precision
+        temperature: 0.3,
       },
     });
 
@@ -129,6 +158,82 @@ export const generateAstrologyReport = async (rawText: string): Promise<Astrolog
     throw error;
   }
 
-  // We no longer generate an image. We use the static logo in the PDF service.
+  // 2. Image Generation Phase (Parallel)
+  const visualPromises: Promise<void>[] = [];
+  const visuals: GeneratedVisuals = {};
+
+  // Common Style Guide for Consistency
+  const styleGuide = "Style: Minimalist, Flat Vector Art, Esoteric/Spiritual iconography. Colors: Deep Teal (#004d40) and Vibrant Orange (#fb8c00) on White Background. No shading, no gradients, clean lines only.";
+
+  // A. Spiritual Pilgrimage Map
+  if (report.spiritualPilgrimage && report.spiritualPilgrimage.length > 0) {
+    const prompt = `A minimalist, stylized map of India showing pin locations for: ${report.spiritualPilgrimage.join(", ")}. 
+    ${styleGuide} Use simple dots or stars for locations.`;
+    
+    visualPromises.push(
+      generateImage(ai, prompt).then(img => { if (img) visuals.pilgrimageMap = img; })
+    );
+  }
+
+  // B. Botanical Remedies Illustration
+  if (report.botanicalRemedies && report.botanicalRemedies.length > 0) {
+    const prompt = `Minimalist line drawing of the following sacred trees/plants: ${report.botanicalRemedies.join(", ")}. 
+    ${styleGuide} Artistic, simple, elegant nature composition.`;
+
+    visualPromises.push(
+      generateImage(ai, prompt).then(img => { if (img) visuals.botanicalSketch = img; })
+    );
+  }
+
+  // C. Career Abstract
+  const careerItem = report.timelineAnalysis?.find(t => t.label.toLowerCase().includes("career"));
+  if (careerItem) {
+    const prompt = `A symbolic, minimal astrological icon representing this career forecast: "${careerItem.value}". 
+    ${styleGuide} Abstract geometric shapes, professional, upward growth.`;
+
+    visualPromises.push(
+      generateImage(ai, prompt).then(img => { if (img) visuals.careerVisual = img; })
+    );
+  }
+
+  // D. Gemstone Visual (New)
+  if (report.structuredRemedies?.gemstones) {
+    const prompt = `A minimalist vector icon of the recommended gemstone: ${report.structuredRemedies.gemstones}. 
+    ${styleGuide} Focus on the shape of the stone or ring. Simple and elegant.`;
+    
+    visualPromises.push(
+        generateImage(ai, prompt).then(img => { if (img) visuals.gemstoneVisual = img; })
+    );
+  }
+
+  // E. Personality/Aura Visual (New)
+  if (report.personalityHealth?.temperament) {
+    const prompt = `Abstract minimalist circle representation of this temperament: ${report.personalityHealth.temperament}. 
+    ${styleGuide} Use circular patterns or aura lines.`;
+    
+    visualPromises.push(
+        generateImage(ai, prompt).then(img => { if (img) visuals.personalityVisual = img; })
+    );
+  }
+
+  // F. Planetary Alignment (New - based on observations)
+  if (report.keyObservations && report.keyObservations.length > 0) {
+      const prompt = `Minimalist astrological chart symbols representing: ${report.keyObservations[0]}. 
+      ${styleGuide} Use planet symbols (Saturn, Mars, etc.) in a geometric arrangement.`;
+      
+      visualPromises.push(
+          generateImage(ai, prompt).then(img => { if (img) visuals.planetaryVisual = img; })
+      );
+  }
+
+  // Wait for all images to generate (or fail silently)
+  try {
+    await Promise.all(visualPromises);
+    report.generatedVisuals = visuals;
+  } catch (e) {
+    console.error("Error generating visuals:", e);
+    // We do not fail the whole report if images fail
+  }
+
   return report;
 };
